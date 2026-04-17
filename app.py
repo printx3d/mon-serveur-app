@@ -1,53 +1,86 @@
 import tkinter as tk
 from tkinter import messagebox
-import json
-import os
+import requests
 
-FILE = "users.json"
+SERVER_URL = "https://mon-serveur-app.onrender.com"
 
-# Créer le fichier s'il n'existe pas
-if not os.path.exists(FILE):
-    with open(FILE, "w") as f:
-        json.dump({}, f)
 
-def load_users():
-    with open(FILE, "r") as f:
-        return json.load(f)
-
-def save_users(users):
-    with open(FILE, "w") as f:
-        json.dump(users, f)
-
+# ---------------- LOGIN ----------------
 def login():
     username = entry_user.get()
     password = entry_pass.get()
 
-    users = load_users()
+    response = requests.post(f"{SERVER_URL}/login", json={
+        "username": username,
+        "password": password
+    })
 
-    if username in users and users[username] == password:
-        messagebox.showinfo("Succès", "Connexion réussie")
+    if response.status_code == 200:
+        open_dashboard(username)
     else:
         messagebox.showerror("Erreur", "Identifiants incorrects")
+
 
 def register():
     username = entry_user.get()
     password = entry_pass.get()
 
-    users = load_users()
+    response = requests.post(f"{SERVER_URL}/register", json={
+        "username": username,
+        "password": password
+    })
 
-    if username in users:
-        messagebox.showerror("Erreur", "Utilisateur déjà existant")
+    if response.status_code == 200:
+        messagebox.showinfo("OK", "Compte créé")
     else:
-        users[username] = password
-        save_users(users)
-        messagebox.showinfo("Succès", "Compte créé")
+        messagebox.showerror("Erreur", "Utilisateur existe déjà")
 
-# Interface
+
+# ---------------- DASHBOARD ----------------
+def open_dashboard(username):
+    root.destroy()
+
+    dash = tk.Tk()
+    dash.title("Dashboard")
+    dash.geometry("800x500")
+
+    # HEADER
+    header = tk.Frame(dash, bg="#1e1e2f", height=60)
+    header.pack(fill="x")
+
+    tk.Label(
+        header,
+        text=f"Bienvenue, {username}",
+        fg="white",
+        bg="#1e1e2f",
+        font=("Arial", 14)
+    ).pack(pady=15)
+
+    # SIDEBAR
+    sidebar = tk.Frame(dash, bg="#2b2b3d", width=200)
+    sidebar.pack(side="left", fill="y")
+
+    tk.Button(sidebar, text="📋 Tâches", width=20).pack(pady=10)
+    tk.Button(sidebar, text="👥 Équipe", width=20).pack(pady=10)
+    tk.Button(sidebar, text="⚙️ Paramètres", width=20).pack(pady=10)
+
+    # MAIN AREA
+    main = tk.Frame(dash, bg="#f5f5f5")
+    main.pack(side="right", expand=True, fill="both")
+
+    tk.Label(main, text="Dashboard", font=("Arial", 20)).pack(pady=20)
+
+    tk.Label(main, text="👉 Ici tu ajouteras les tâches plus tard").pack()
+
+    dash.mainloop()
+
+
+# ---------------- LOGIN UI ----------------
 root = tk.Tk()
 root.title("Connexion")
 root.geometry("300x200")
 
-tk.Label(root, text="Nom d'utilisateur").pack()
+tk.Label(root, text="Utilisateur").pack()
 entry_user = tk.Entry(root)
 entry_user.pack()
 
