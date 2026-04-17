@@ -7,37 +7,35 @@ SERVER_URL = "https://mon-serveur-app.onrender.com"
 
 # ---------------- LOGIN ----------------
 def login():
+    global username
     username = entry_user.get()
     password = entry_pass.get()
 
-    response = requests.post(f"{SERVER_URL}/login", json={
+    r = requests.post(f"{SERVER_URL}/login", json={
         "username": username,
         "password": password
     })
 
-    if response.status_code == 200:
-        open_dashboard(username)
+    if r.status_code == 200:
+        open_dashboard()
     else:
-        messagebox.showerror("Erreur", "Identifiants incorrects")
+        messagebox.showerror("Erreur", "Login incorrect")
 
 
 def register():
-    username = entry_user.get()
-    password = entry_pass.get()
-
-    response = requests.post(f"{SERVER_URL}/register", json={
-        "username": username,
-        "password": password
+    r = requests.post(f"{SERVER_URL}/register", json={
+        "username": entry_user.get(),
+        "password": entry_pass.get()
     })
 
-    if response.status_code == 200:
+    if r.status_code == 200:
         messagebox.showinfo("OK", "Compte créé")
     else:
         messagebox.showerror("Erreur", "Utilisateur existe déjà")
 
 
 # ---------------- DASHBOARD ----------------
-def open_dashboard(username):
+def open_dashboard():
     root.destroy()
 
     dash = tk.Tk()
@@ -48,47 +46,59 @@ def open_dashboard(username):
     header = tk.Frame(dash, bg="#1e1e2f", height=60)
     header.pack(fill="x")
 
-    tk.Label(
-        header,
-        text=f"Bienvenue, {username}",
-        fg="white",
-        bg="#1e1e2f",
-        font=("Arial", 14)
-    ).pack(pady=15)
+    tk.Label(header, text=f"Bienvenue {username}",
+             fg="white", bg="#1e1e2f").pack(pady=15)
 
-    # SIDEBAR
-    sidebar = tk.Frame(dash, bg="#2b2b3d", width=200)
-    sidebar.pack(side="left", fill="y")
+    # MAIN
+    main = tk.Frame(dash)
+    main.pack(fill="both", expand=True)
 
-    tk.Button(sidebar, text="📋 Tâches", width=20).pack(pady=10)
-    tk.Button(sidebar, text="👥 Équipe", width=20).pack(pady=10)
-    tk.Button(sidebar, text="⚙️ Paramètres", width=20).pack(pady=10)
+    # ENTRY TASK
+    task_entry = tk.Entry(main, width=40)
+    task_entry.pack(pady=10)
 
-    # MAIN AREA
-    main = tk.Frame(dash, bg="#f5f5f5")
-    main.pack(side="right", expand=True, fill="both")
+    # TASK LIST
+    tasks_frame = tk.Frame(main)
+    tasks_frame.pack()
 
-    tk.Label(main, text="Dashboard", font=("Arial", 20)).pack(pady=20)
+    def load_tasks():
+        for w in tasks_frame.winfo_children():
+            w.destroy()
 
-    tk.Label(main, text="👉 Ici tu ajouteras les tâches plus tard").pack()
+        r = requests.get(f"{SERVER_URL}/tasks/{username}")
+        tasks = r.json()
+
+        for t in tasks:
+            tk.Label(tasks_frame, text=f"📌 {t[1]} ({t[2]})").pack()
+
+    def add_task():
+        requests.post(f"{SERVER_URL}/tasks/create", json={
+            "title": task_entry.get(),
+            "owner": username
+        })
+        load_tasks()
+
+    tk.Button(main, text="Ajouter tâche", command=add_task).pack()
+
+    load_tasks()
 
     dash.mainloop()
 
 
 # ---------------- LOGIN UI ----------------
 root = tk.Tk()
-root.title("Connexion")
+root.title("Login")
 root.geometry("300x200")
 
-tk.Label(root, text="Utilisateur").pack()
+tk.Label(root, text="User").pack()
 entry_user = tk.Entry(root)
 entry_user.pack()
 
-tk.Label(root, text="Mot de passe").pack()
+tk.Label(root, text="Pass").pack()
 entry_pass = tk.Entry(root, show="*")
 entry_pass.pack()
 
-tk.Button(root, text="Se connecter", command=login).pack(pady=5)
-tk.Button(root, text="Créer un compte", command=register).pack()
+tk.Button(root, text="Login", command=login).pack()
+tk.Button(root, text="Register", command=register).pack()
 
 root.mainloop()
