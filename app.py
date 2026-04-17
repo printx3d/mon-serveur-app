@@ -1,93 +1,100 @@
 import tkinter as tk
+from tkinter import messagebox
 import requests
 
 SERVER_URL = "https://mon-serveur-app.onrender.com"
-
-username = ""
 
 
 # ---------------- LOGIN ----------------
 def login():
     global username
     username = entry_user.get()
+    password = entry_pass.get()
 
     r = requests.post(f"{SERVER_URL}/login", json={
         "username": username,
-        "password": entry_pass.get()
+        "password": password
     })
 
     if r.status_code == 200:
-        dashboard()
+        open_dashboard()
     else:
-        print("error")
+        messagebox.showerror("Erreur", "Login incorrect")
 
 
 def register():
-    requests.post(f"{SERVER_URL}/register", json={
+    r = requests.post(f"{SERVER_URL}/register", json={
         "username": entry_user.get(),
         "password": entry_pass.get()
     })
 
+    if r.status_code == 200:
+        messagebox.showinfo("OK", "Compte créé")
+    else:
+        messagebox.showerror("Erreur", "Utilisateur existe déjà")
+
 
 # ---------------- DASHBOARD ----------------
-def dashboard():
+def open_dashboard():
     root.destroy()
 
-    win = tk.Tk()
-    win.geometry("900x600")
-    win.title("Dashboard")
+    dash = tk.Tk()
+    dash.title("Dashboard")
+    dash.geometry("800x500")
 
-    # TASK INPUTS
-    title = tk.Entry(win)
-    title.pack()
+    # HEADER
+    header = tk.Frame(dash, bg="#1e1e2f", height=60)
+    header.pack(fill="x")
 
-    priority = tk.Entry(win)
-    priority.pack()
-    priority.insert(0, "low")
+    tk.Label(header, text=f"Bienvenue {username}",
+             fg="white", bg="#1e1e2f").pack(pady=15)
 
-    deadline = tk.Entry(win)
-    deadline.pack()
-    deadline.insert(0, "2026-01-01")
+    # MAIN
+    main = tk.Frame(dash)
+    main.pack(fill="both", expand=True)
 
-    assigned = tk.Entry(win)
-    assigned.pack()
-    assigned.insert(0, username)
+    # ENTRY TASK
+    task_entry = tk.Entry(main, width=40)
+    task_entry.pack(pady=10)
 
-    frame = tk.Frame(win)
-    frame.pack()
+    # TASK LIST
+    tasks_frame = tk.Frame(main)
+    tasks_frame.pack()
 
-    def load():
-        for w in frame.winfo_children():
+    def load_tasks():
+        for w in tasks_frame.winfo_children():
             w.destroy()
 
         r = requests.get(f"{SERVER_URL}/tasks/{username}")
-        for t in r.json():
-            tk.Label(frame, text=t[1]).pack()
+        tasks = r.json()
 
-    def add():
+        for t in tasks:
+            tk.Label(tasks_frame, text=f"📌 {t[1]} ({t[2]})").pack()
+
+    def add_task():
         requests.post(f"{SERVER_URL}/tasks/create", json={
-            "title": title.get(),
-            "priority": priority.get(),
-            "deadline": deadline.get(),
-            "assigned_to": assigned.get(),
-            "project_id": 1
+            "title": task_entry.get(),
+            "owner": username
         })
-        load()
+        load_tasks()
 
-    tk.Button(win, text="Add Task", command=add).pack()
+    tk.Button(main, text="Ajouter tâche", command=add_task).pack()
 
-    load()
+    load_tasks()
 
-    win.mainloop()
+    dash.mainloop()
 
 
 # ---------------- LOGIN UI ----------------
 root = tk.Tk()
+root.title("Login")
 root.geometry("300x200")
 
+tk.Label(root, text="User").pack()
 entry_user = tk.Entry(root)
 entry_user.pack()
 
+tk.Label(root, text="Pass").pack()
 entry_pass = tk.Entry(root, show="*")
 entry_pass.pack()
 
