@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import os
+import bcrypt
+
 
 app = Flask(__name__)
 
@@ -25,10 +27,13 @@ def register():
     username = data["username"]
     password = data["password"]
 
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
     try:
         conn = sqlite3.connect("database.db")
         c = conn.cursor()
-        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", 
+                  (username, hashed))
         conn.commit()
         conn.close()
         return jsonify({"message": "Compte créé"})
@@ -43,11 +48,11 @@ def login():
 
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    c.execute("SELECT password FROM users WHERE username=?", (username,))
     user = c.fetchone()
     conn.close()
 
-    if user:
+    if user and bcrypt.checkpw(password.encode('utf-8'), user[0]):
         return jsonify({"message": "Connexion réussie"})
     else:
         return jsonify({"error": "Identifiants incorrects"}), 401
